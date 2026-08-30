@@ -35,8 +35,8 @@ tests/         pytest suite
 
 ## Setup
 
-Requires Python >= 3.10, R with the `ape` package, and IQ-TREE 2 (bundles
-AliSim) on `PATH`.
+Requires Python >= 3.10, R with the `ape` package, and IQ-TREE (bundles
+AliSim; ships as the `iqtree3` binary).
 
 ```bash
 python3 -m venv .venv
@@ -50,11 +50,20 @@ R dependency:
 install.packages("ape")
 ```
 
-IQ-TREE 2 (macOS, via Homebrew):
+IQ-TREE, via conda/bioconda:
 
 ```bash
-brew install brewsci/bio/iqtree
+conda create -n quartet-ml -c bioconda -c conda-forge iqtree -y
+conda activate quartet-ml
 ```
+
+**Note:** the Homebrew `iqtree3` bottle (both Intel and native arm64 builds)
+hangs indefinitely on AliSim on macOS 14.3.1/arm64 as of 2026-08 — the
+process enters an unkillable uninterruptible-wait state. The bioconda build
+(3.1.3) does not have this problem and is what's actually used here. Point
+any `iqtree3` calls in `quartet_ml/simulate/` and `quartet_ml/baselines/` at
+the conda env's binary, e.g. `~/miniconda3/envs/quartet-ml/bin/iqtree3`, or
+`conda activate quartet-ml` before running.
 
 ## Usage
 
