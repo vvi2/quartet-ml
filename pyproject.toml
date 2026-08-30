@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quartet-ml"
+version = "0.1.0"
+description = "Where does learning help on a quartet, and where does the model have to carry it? CNN vs. site-pattern classifier vs. ML vs. NJ on the four-taxon phylogenetics problem."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "Varsha Iyer", email = "varshaviyer1@gmail.com" }
+]
+
+dependencies = [
+    "numpy",
+    "scipy",
+    "pandas",
+    "scikit-learn",
+    "torch",
+    "biopython",
+    "click",
+    "matplotlib",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+]
+
+[project.scripts]
+quartet-ml = "quartet_ml.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["quartet_ml*"]

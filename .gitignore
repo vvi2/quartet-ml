@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# R
+.Rhistory
+.RData
+.Rproj.user/
+
+# Data / simulation outputs (regenerate via `quartet-ml simulate`, don't commit)
+data/
+*.fasta
+*.phy
+*.nwk
+!tests/fixtures/**
+
+# OS
+.DS_Store
+
+# Quarto
+report/report.html
+report/_files/
+report/.quarto/

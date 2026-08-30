@@ -1,0 +1,28 @@
+---
+title: "Where does learning help on a quartet, and where does the model have to carry it?"
+author: "Varsha Iyer"
+format:
+  pdf:
+    fig-width: 7
+    fig-height: 4.5
+---
+
+## Research question
+
+## Predictions, recorded before running
+
+## Methods
+
+## Headline figure
+
+## Results by regime
+
+### Easy
+
+### Felsenstein zone
+
+### Outbreak-like
+
+## Misspecification (JC69 → GTR+Γ)
+
+## Discussion
