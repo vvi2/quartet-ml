@@ -17,9 +17,6 @@ unrooted topologies. Evaluated across three evolutionary regimes (easy,
 Felsenstein zone, outbreak-like) and under substitution-model
 misspecification (train JC69, test GTR+Γ).
 
-Full design and motivation: `docs/project2_quartet_phylogenetics.md` (project
-spec).
-
 ## Package layout
 
 ```
@@ -71,8 +68,7 @@ the conda env's binary, e.g. `~/miniconda3/envs/quartet-ml/bin/iqtree3`, or
 quartet-ml --help
 ```
 
-(Subcommands land as each stage is implemented — see the two-week plan in
-the project spec.)
+(Subcommands land as each stage is implemented.)
 
 ## Tests
 
