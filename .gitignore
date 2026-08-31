@@ -20,6 +20,7 @@ data/
 *.fasta
 *.phy
 *.nwk
+*.csv
 !tests/fixtures/**
 
 # OS
