@@ -1,7 +1,9 @@
 """Smoke test: confirms the package installs and imports cleanly."""
 
+import numpy as np
+
 import quartet_ml
-from quartet_ml.features import build_site_pattern_vector, read_phylip_data
+from quartet_ml.features import build_site_pattern_vector, cnn_matrix, jc69_collapsed_vector, read_phylip_data
 from quartet_ml.simulate import build_newick, create_trees, easy, felsenstein_zone, outbreak_like, possible_topologies
 
 
@@ -84,8 +86,21 @@ def test_create_trees():
     assert seen_topologies == {"1", "2", "3"}, f"Not all topologies {1, 2, 3} were present. Found: {seen_topologies}"
 
 def test_build_site_pattern_vector():
-    taxa_dict = read_phylip_data("sim_outputs_jc/sim_1_0.081_easy_jc_0.phy")
-    vector = build_site_pattern_vector(taxa_dict)
-    assert vector.size == 256, f"Expected 256 entries in feature vector, but got {vector.size}"
-    assert vector.sum() == 1000, f"Expected 1000 site patterns in the alignment, but got {vector.sum()}"
+    taxa_dict_ex = read_phylip_data("sim_outputs_jc/sim_1_0.081_easy_jc_0.phy")
+    vector_256 = build_site_pattern_vector(taxa_dict_ex)
+    assert vector_256.size == 256, f"Expected 256 entries in feature vector, but got {vector_256.size}"
+    assert vector_256.sum() == 1000, f"Expected 1000 site patterns in the alignment, but got {vector_256.sum()}"
+
+def test_jc69_collapsed_vector():
+    taxa_dict_ex = read_phylip_data("sim_outputs_jc/sim_1_0.081_easy_jc_0.phy")
+    vector_256 = build_site_pattern_vector(taxa_dict_ex)
+    collapsed_vector = jc69_collapsed_vector(vector_256)
+    assert sum(collapsed_vector) == vector_256.sum(), f"Expected 256-number vector sum to equal 15-number collapsed version sum (i.e. 1000), but collapsed vector sum is {sum(collapsed_vector)}"
+    assert len(collapsed_vector) == 15, f"Expected collapsed vector to have 15 entries, but it has {len(collapsed_vector)}"
+
+def test_cnn_matrix():
+    taxa_dict_ex = read_phylip_data("sim_outputs_jc/sim_1_0.081_easy_jc_0.phy")
+    matrix = cnn_matrix(taxa_dict_ex)
+    assert matrix.shape == (4, 4, 1000), f"Expected shape of CNN matrix to be (4, 4, 1000) but instead got {matrix.shape}"
+    assert (np.sum(matrix, axis=1) == 1).all(), f"Expected only one base present at each alignment position, but instead got {np.sum(matrix, axis=1)}"
 
