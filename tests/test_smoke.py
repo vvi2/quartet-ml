@@ -1,6 +1,7 @@
 """Smoke test: confirms the package installs and imports cleanly."""
 
 import quartet_ml
+from quartet_ml.features import build_site_pattern_vector, read_phylip_data
 from quartet_ml.simulate import build_newick, create_trees, easy, felsenstein_zone, outbreak_like, possible_topologies
 
 
@@ -81,3 +82,10 @@ def test_create_trees():
             f"Missing regime keys at index {idx}. Found: {list(regimes.keys())}"
         )
     assert seen_topologies == {"1", "2", "3"}, f"Not all topologies {1, 2, 3} were present. Found: {seen_topologies}"
+
+def test_build_site_pattern_vector():
+    taxa_dict = read_phylip_data("sim_outputs_jc/sim_1_0.081_easy_jc_0.phy")
+    vector = build_site_pattern_vector(taxa_dict)
+    assert vector.size == 256, f"Expected 256 entries in feature vector, but got {vector.size}"
+    assert vector.sum() == 1000, f"Expected 1000 site patterns in the alignment, but got {vector.sum()}"
+
