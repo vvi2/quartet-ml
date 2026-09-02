@@ -3,6 +3,7 @@
 import numpy as np
 
 import quartet_ml
+from quartet_ml.baselines import nj_prediction, iq_tree
 from quartet_ml.features import build_site_pattern_vector, cnn_matrix, jc69_collapsed_vector, read_phylip_data
 from quartet_ml.simulate import build_newick, create_trees, easy, felsenstein_zone, outbreak_like, possible_topologies
 
@@ -103,4 +104,21 @@ def test_cnn_matrix():
     matrix = cnn_matrix(taxa_dict_ex)
     assert matrix.shape == (4, 4, 1000), f"Expected shape of CNN matrix to be (4, 4, 1000) but instead got {matrix.shape}"
     assert (np.sum(matrix, axis=1) == 1).all(), f"Expected only one base present at each alignment position, but instead got {np.sum(matrix, axis=1)}"
+
+def test_iq_tree():
+    topology_1 = iq_tree("sim_outputs_jc/sim_1_0.081_easy_jc_0.phy", "sim_1_0.081_easy_jc_0")
+    topology_2 = iq_tree("sim_outputs_jc/sim_2_0.081_easy_jc_0.phy", "sim_2_0.081_easy_jc_0")
+    topology_3 = iq_tree("sim_outputs_jc/sim_3_0.081_easy_jc_0.phy", "sim_3_0.081_easy_jc_0")
+    assert topology_1 == "1", f"Expected iqtree to predict 1 on this file, but instead got {topology_1}"
+    assert topology_2 == "2", f"Expected iqtree to predict 2 on this file, but instead got {topology_2}"
+    assert topology_3 == "3", f"Expected iqtree to predict 3 on this file, but instead got {topology_3}"
+
+def test_neighbor_joining():
+    topology_1 = nj_prediction("sim_outputs_jc/sim_1_0.081_easy_jc_0.phy")
+    topology_2 = nj_prediction("sim_outputs_jc/sim_2_0.081_easy_jc_0.phy")
+    topology_3 = nj_prediction("sim_outputs_jc/sim_3_0.081_easy_jc_0.phy")
+    assert topology_1 == "1", f"Expected NJ to predict 1 on this file, but instead got {topology_1}"
+    assert topology_2 == "2", f"Expected NJ to predict 2 on this file, but instead got {topology_2}"
+    assert topology_3 == "3", f"Expected NJ to predict 3 on this file, but instead got {topology_3}"
+
 

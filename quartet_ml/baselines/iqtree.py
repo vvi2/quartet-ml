@@ -3,10 +3,16 @@ from quartet_ml.simulate import possible_topologies
 
 from Bio import Phylo
 
-def run_iqtree_command(alignment, output_prefix):
+def run_iqtree_command(alignment_path, output_prefix):
+  """
+  Run iqtree package on an alignment file and output the tree to a new file.
+  Parameters:
+    alignment_path (str): file path to alignment data
+    output_prefix (str): prefix of output file name
+  """
   command = [
     "iqtree3",
-    "-s", alignment,
+    "-s", alignment_path,
     "-m", "JC",
     "-pre", output_prefix,
     "-quiet"
@@ -26,12 +32,24 @@ def run_iqtree_command(alignment, output_prefix):
     return None
 
 def iq_tree_prediction(output_prefix):
+  """
+  Determine which topology the iq tree predicted from the alignment data in the output file.
+  Parameters:
+    output_prefix (str): prefix of output file name
+  """
   newick_tree = Phylo.read(f"{output_prefix}.treefile", "newick")
   taxon = {taxa.name: taxa for taxa in newick_tree.get_terminals()}
   for topology_label, newick in possible_topologies().items():
     if(newick_tree.is_monophyletic([taxon[newick[0][0]], taxon[newick[0][1]]]) or newick_tree.is_monophyletic([taxon[newick[1][0]], taxon[newick[1][1]]]) ):
       return topology_label
 
-def iq_tree(alignment, output_prefix):
-  if(run_iqtree_command(alignment, output_prefix) is not None):
+def iq_tree(alignment_path, output_prefix):
+  """
+  Run iqtree command and get its prediction if not None
+  Parameters:
+    alignment_path (str): file path to alignment data
+    output_prefix (str): prefix of output file name
+  """
+  if(run_iqtree_command(alignment_path, output_prefix) is not None):
     return iq_tree_prediction(output_prefix)
+  

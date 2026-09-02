@@ -21,6 +21,12 @@ data/
 *.phy
 *.nwk
 *.csv
+*.bionj
+*.ckp.gz
+*.iqtree
+*.log
+*.mldist
+*.treefile
 !tests/fixtures/**
 
 # OS
