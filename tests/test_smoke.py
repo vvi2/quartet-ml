@@ -6,6 +6,7 @@ import quartet_ml
 from quartet_ml.baselines import nj_prediction, iq_tree
 from quartet_ml.features import build_site_pattern_vector, cnn_matrix, jc69_collapsed_vector, read_phylip_data
 from quartet_ml.simulate import build_newick, create_trees, easy, felsenstein_zone, outbreak_like, possible_topologies
+from quartet_ml.train import get_x_y_train, site_pattern_classifier_LR
 
 
 def test_import() -> None:
@@ -120,5 +121,24 @@ def test_neighbor_joining():
     assert topology_1 == "1", f"Expected NJ to predict 1 on this file, but instead got {topology_1}"
     assert topology_2 == "2", f"Expected NJ to predict 2 on this file, but instead got {topology_2}"
     assert topology_3 == "3", f"Expected NJ to predict 3 on this file, but instead got {topology_3}"
+
+def test_site_pattern_classifier_LR():
+    models = site_pattern_classifier_LR("tests/fixtures/site_pattern_train_fixture.csv")
+    x_train_256 = models["x_train_256"]
+    x_train_15 = models["x_train_15"]
+    y_train = models["y_train"]
+    assert len(x_train_256) == len(y_train), f"x_train_256 does not match size of y_train"
+    assert len(x_train_256[0]) == 256, f"x_train_256 vectors should have 256 values, but instead has {len(x_train_256[0])}"
+    assert len(x_train_15[0]) == 15, f"x_train_15 vector should have 15 values, but instead has {len(x_train_15)}"
+    assert all(topology in ["1", "2", "3"] for topology in y_train), f"Expected y_train to have only either 1, 2, 3, but that's not the case"
+    assert "256" in models and "15" in models, f"Expected returned model dict to have keys 256 and 15."
+    assert set(models["256"].named_steps["clf"].classes_) == {"1", "2", "3"}, f"Expected labels the 256 lr model learned to be 1, 2, 3 but got {set(models['256'].named_steps['clf'].classes_)}"
+    assert set(models["15"].named_steps["clf"].classes_) == {"1", "2", "3"}, f"Expected labels the 15 lr model learned to be 1, 2, 3 but got {set(models['15'].named_steps['clf'].classes_)}"
+    probs_256 = models["256"].predict_proba(x_train_256[:3])
+    probs_15 = models["15"].predict_proba(x_train_15[:3])
+    assert probs_256.shape == (3, 3), f"Shape of 256 model probabilities should be (3, 3), but is {probs_256.shape}"
+    assert probs_15.shape == (3, 3), f"Shape of 15 model probabilities should be (3, 3), but is {probs_15.shape}"
+    assert np.allclose(probs_256.sum(axis=1), 1), f"Probabilities of 256 model do not sum to 1"
+    assert np.allclose(probs_15.sum(axis=1), 1), f"Probabilities of 15 model do not sum to 1"
 
 

@@ -1,3 +1,4 @@
+from pathlib import Path
 import subprocess
 from quartet_ml.simulate import possible_topologies
 
@@ -18,6 +19,9 @@ def run_iqtree_command(alignment_path, output_prefix):
     "-quiet"
   ]
   try:
+    #Cleanup files created from iqtree3 command from last run so it can run again
+    for ext in {"bionj", "ckp.gz", "iqtree", "log", "mldist", "treefile"}:
+      Path(f"{output_prefix}.{ext}").unlink(missing_ok=True)
     result = subprocess.run(
       command,
       stdout=subprocess.PIPE,
