@@ -7,6 +7,7 @@ from quartet_ml.baselines import nj_prediction, iq_tree
 from quartet_ml.features import build_site_pattern_vector, cnn_matrix, jc69_collapsed_vector, read_phylip_data
 from quartet_ml.simulate import build_newick, create_trees, easy, felsenstein_zone, outbreak_like, possible_topologies
 from quartet_ml.train import get_x_y_train, site_pattern_classifier_LR
+from quartet_ml.evaluate import accuracy, confusion_matrix_3x3, bootstrap_ci, calibration
 
 
 def test_import() -> None:
@@ -140,5 +141,49 @@ def test_site_pattern_classifier_LR():
     assert probs_15.shape == (3, 3), f"Shape of 15 model probabilities should be (3, 3), but is {probs_15.shape}"
     assert np.allclose(probs_256.sum(axis=1), 1), f"Probabilities of 256 model do not sum to 1"
     assert np.allclose(probs_15.sum(axis=1), 1), f"Probabilities of 15 model do not sum to 1"
+
+def test_accuracy():
+    y_true = ["1", "2", "3", "1", "2", "3"]
+    y_pred = ["1", "2", "3", "1", "3", "3"]
+    score = accuracy(y_true, y_pred)
+    assert score == 5/6, f"Expected accuracy of 5/6, but got {score}"
+
+def test_confusion_matrix_3x3():
+    y_true = ["1", "2", "3", "1", "2", "3"]
+    y_pred = ["1", "2", "3", "1", "3", "3"]
+    expected = np.array([
+        [2, 0, 0],
+        [0, 1, 1],
+        [0, 0, 2],
+    ])
+    matrix = confusion_matrix_3x3(y_true, y_pred)
+    assert np.array_equal(matrix, expected), f"Expected confusion matrix {expected.tolist()}, but got {matrix.tolist()}"
+
+def test_bootstrap_ci():
+    y_true = ["1", "2", "3", "1", "2", "3"]
+    y_pred = ["1", "2", "3", "1", "3", "3"]
+    lo, hi = bootstrap_ci(y_true, y_pred, n_boot=2000, seed=42)
+    assert 0 <= lo <= hi <= 1, f"Expected 0 <= lo <= hi <= 1, but got lo={lo}, hi={hi}"
+    point_estimate = accuracy(y_true, y_pred)
+    assert lo <= point_estimate <= hi, f"Expected point estimate {point_estimate} to fall within [{lo}, {hi}]"
+
+def test_calibration():
+    y_true = ["2", "1", "3", "1", "2", "3"]
+    y_proba = np.array([
+        [0.05, 0.90, 0.05],
+        [0.60, 0.20, 0.20],
+        [0.10, 0.10, 0.80],
+        [0.34, 0.33, 0.33],
+        [0.40, 0.55, 0.05],
+        [0.20, 0.30, 0.50],
+    ])
+    result = calibration(y_true, y_proba, n_bins=2)
+    assert np.isclose(result["brier_score"], 0.2855666666666667), f"Expected brier_score ~0.2856, but got {result['brier_score']}"
+    reliability_table = result["reliability_table"]
+    assert len(reliability_table) == 2, f"Expected 2 bins, but got {len(reliability_table)}"
+    for mean_confidence, observed_accuracy, n_in_bin in reliability_table:
+        assert 0 <= mean_confidence <= 1, f"Expected mean_confidence in [0, 1], but got {mean_confidence}"
+        assert 0 <= observed_accuracy <= 1, f"Expected observed_accuracy in [0, 1], but got {observed_accuracy}"
+        assert n_in_bin == 3, f"Expected 3 alignments per bin, but got {n_in_bin}"
 
 
