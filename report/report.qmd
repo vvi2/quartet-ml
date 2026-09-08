@@ -1,28 +1,182 @@
 ---
-title: "Where does learning help on a quartet, and where does the model have to carry it?"
-author: "Varsha Iyer"
+title: "CNNs vs. Site-Pattern Logistic Regression for Quartet Phylogenetics Under Model Misspecification"
+author: "Varsha Iyer, ksb9020@med.cornell.edu"
 format:
   pdf:
     fig-width: 7
     fig-height: 4.5
 ---
 
-## Research question
+## Research Question and Motivation
+### Question
+I take a small phylogenetic problem that deals with four taxa that have three possible unrooted topologies. I compare five methods on predicting the topology given a 1000 character DNA sequence of each taxon across three evolutionary regimes and ask three questions:
 
-## Predictions, recorded before running
+1. Does a CNN on raw alignment data out perform logistic regression on site-pattern frequencies? Under a correctly specified substitution model, this should not occur. Site-pattern frequencies are close to a sufficient statistic. This scenario is the control and I expect it to be null.
+2. Does this control outcome hold under model misspecification? Train the methods under JC69 (the simple data) and test them under GTR+Γ (complex/realistic data). If the learned methods degrade differently from the baseline likelihood method under messier data, then this tells us that the ML learned something structurally different from the baseline method. So determining where this divergence occurs (if it does), which regime, which misspecification condition, etc is important.
+3. Does feeding the summary statistic from site-pattern classifier into the CNN help its performance? A hybrid CNN that concatenates site-pattern frequencies onto the CNN's features touches on the concept of "model-guided AI" and informs on whether this approach enhances the application of deep learning algorithms in estimating phylogenetic trees.
+
+### Motivation
+I undertook this project to test the claim that deep learning algorithms cannot perform as well as traditional statistical methods for phylogenetic tree prediction, because evolution follows a complex path and has quirks that ML algorithms may not pick up on or know inherently, and misinterpret patterns it may see in the alignments. I test this claim at the smallest scale. The expected failure scenario is the Felsenstein zone: where similarity-based methods will misread two unrelated branches of the same length as being related. This error gets worse with more data. And I also test under the outbreak genomics scenarios where near-identical genomes with internal branch lengths near zero, show sparse signal.
+I believe the most informative comparison out of my experiment would be the CNN vs. logistic regression on site-pattern frequencies. Under the JC69 model assumption, the site-pattern frequencies collapse to 15 numbers since pattern distinction is based on symmetry and about which bases match/differ. If the CNN can't perform better than the 15-number logistic regression, that confirms the project's claim of the inability of deep learning to better estimate.
+I also experiment with different data sets that mimic different substitution models in evolution. I train the models on the simple JC69 dataset and test on GTR+Γ simulated data. The misspecified data will break the likelhood method and site-pattern classifier, so how each method and a hybrid CNN comparatively degrade under a wrong model is very informative.
+
+## Predictions
+By regime:
+
+* Easy: All methods should perform well here. This regime has long enough internal branches with abundant, unambiguous phylogenetic signal that helps methods predict well. CNN will not beat site-pattern classifier under a correctly specified model. The 15-number site pattern vector already captures enough information that the CNN can equally capture through its raw alignment data.
+* Felsenstein zone: Neighbor joining will fail here because it is distance-based and will misgroup two long branches that accumulate "look" like relatedness, which is the trick in this regime. Maximum likelihood will do well here because it models the substitution process and will disregard the chance-agreement effect in its probabilities. In principle, the CNN and logistic regression models can discover the  disregard logic through training examples that include Felsenstein cases, but there's no guarantee that gradient-based learning will do the same.
+* Outbreak: All methods will converge to 1/3 which is chance-level accuracy i.e. just randomly guessing the topology. As internal branch length approaches 0 in outbreak like regime, there is barely any signal left to distinguish between the three tree options. I'm unsure how to rank the methods because it depends on the behavior of each method before it hits chance-level accuracy and how differently they extract the sparse signal. The CNN's flexibility may aid it in finding the sparse signal or just make it overfit.
+* GTR+Γ misspecification data: All the methods will degrade in performance compared to how they did under the JC69 data. Maximum likelihood is conditional on the model being correct, so it inherits the error from the data. The compressed site-pattern classifier may be throwing away real signal that shows up under the misspecification data. And the CNN which trains on JC69 data faces the distribution shift in testing that I'm unsure if it will handle well. The open questions are which order the models degrade in and whether the hybrid CNN/model guided AI degrades less rapidly than each of its parents under messier, more realistic data.
 
 ## Methods
+### Data
+I simulate all of the data. I generate the sequences with AliSim bundled with IQ-TREE 2 which creates the 1000 character DNA sequences for each taxon of the 4-taxa tree. I generate 5,000 DNA alignments per regime type, with true topologies balanced across the 3 options/classes and split the data into 70/15/15 partition of train/validation/test. Within each regime, I vary the internal branch length from 0.001 to 0.1 so I can report model accuracy against branch length to see how that configuration varies performance. I simulate an additional test set under GTR+Γ to evaluate performance under model misspecification. The GTR+Γ is only used for testing.
 
-## Headline figure
+The substitution models (JC69 and GTR) are claims about how DNA evolves. The methods I test are for inferring topology from different datasets that follow each claim and I compare their performance as these models shift. GTR is misspecification since testing the methods against this data violates the substitution model assumption that my methods were built or trained under.
 
-## Results by regime
+### The Methods I Test:
+1. CNN - a neural network that looks at raw alignment data. PyTorch, 2 nn.Conv1d layers over the sequence axis of 4 taxa x 4 bases x 1,000 sites matrix, global pooling, linear head, softmax over topologies.
+2. Site-Pattern Classifier with Logistic Regression - a model that captures site pattern frequencies and built in 2 ways (fuller and a compressed version under the JC69 assumption). Runs multinomial logistic regression on frequencies and analyze the performance gap between the 256-dimensional full pattern vector and 15-dimensional JC69-assumption vector.
+3. Hybrid CNN - the CNN, but with the site-pattern frequency vector attached as an input feature on the flattened convolutional features before the classifier layer (model-guided).
+4. Maximum likelihood (via IQ-TREE) - the well-known, established method when you know the correct evolutionary model. Uses math to predict: for 1 alignment, it tries 3 possible trees with different internal branch lengths for each, calculates how probable would the alignment be if this tree/branch lengths were true.
+5. Neighbor joining (via ape::nj() in R) - simplest, naive distance-based method. Calculates 6 numbers, each a JC69-corrected pairwise distance for each pair of taxa. And then applies the rule of always joining the two closest taxa first to produce the predicted tree.
+
+### Regimes
+I test each of the methods on three different evolutionary regimes ranging in complexity:
+
+1. Easy - normal, balanced amount of evolutionary change. The control.
+2. Felsenstein Zone - two of the four branches evolved unusually fast for a long time. This is a trick that fools simple methods because "similar-looking" sequences are not necessarily closely related.
+3. Outbreak - almost no time has passed so sequences look nearly identical and gives models very little evidence to learn from.
+
+### Evaluation
+I report the following metrics per regime and per internal-branch bin:
+
+1. Accuracy with bootstrap confidence intervals over alignments. It's plain classification accuracy of whether the predicted tree matches the generated topology or not. With 4 taxa, only 3 options.
+2. 3x3 Confusion Matrix which shows the spread of accuracy, how many of each topology did it predict correctly. This is informative for the Felsenstein zone, because errors concentrate on a specific wrong topology that groups the two long branches.
+3. Calibration for the logistic regression/CNN methods. When the CNN says 0.95, is it right 95% of the time? Used to observe confident wrongness.
+
+## Headline Figure
+![Accuracy vs internal branch length across regimes and methods](headline_figure.png)
+
+Note: Curves do not visibly reach the 1/3 chance level accuracy within these plots. The true floor only appears at the smallest individual branch length <= 0.001 which is obscured in these plots by the 10-bin averaging.
+
+Each of the 3 panels in this figure shows accuracy vs internal branch length for one evolutionary regime type. The dashed line indicates chance accuracy 1/3. The clearest signal is the Felsenstein Zone panel where neighbor joining under performs every other method by a wide margin across most branch lengths. The easy and outbreak regime plots show convergence to near-perfect accuracy quickly, in contrast to Felsenstein Zone.
+
+## Results by Regime on JC69 Correctly-Specified-Model Data
+
+### Aggregate
+
+| Arm | Accuracy | 95% CI |
+|---|---|---|
+| LR (256-dim) | 99.13% | [0.9874, 0.9952] |
+| CNN | 98.95% | [0.9852, 0.9935] |
+| Hybrid CNN | 98.87% | [0.9843, 0.9930] |
+| LR (15-dim) | 98.17% | [0.9760, 0.9869] |
+| IQ-TREE (ML) | 96.78% | [0.9603, 0.9747] |
+| NJ | 90.98% | [0.8976, 0.9216] |
 
 ### Easy
 
+| Arm | Accuracy | 95% CI |
+|---|---|---|
+| LR (256-dim) | 98.81% | [0.9802, 0.9948] |
+| Hybrid CNN | 98.81% | [0.9802, 0.9947] |
+| CNN | 98.55% | [0.9763, 0.9934] |
+| IQ-TREE (ML) | 97.63% | [0.9644, 0.9868] |
+| NJ | 96.83% | [0.9551, 0.9802] |
+| LR (15-dim) | 96.17% | [0.9485, 0.9749] |
+
+This regime being the control, we see it behaving as expected. All methods within a few accuracy points of each other by branch length ~0.02.
+
 ### Felsenstein zone
 
-### Outbreak-like
+| Arm | Accuracy | 95% CI |
+|---|---|---|
+| CNN | 99.35% | [0.9871, 0.9987] |
+| LR (256-dim) | 98.97% | [0.9819, 0.9961] |
+| Hybrid CNN | 98.97% | [0.9819, 0.9961] |
+| LR (15-dim) | 98.58% | [0.9767, 0.9935] |
+| IQ-TREE (ML) | 93.14% | [0.9133, 0.9483] |
+| NJ | 76.58% | [0.7361, 0.7956] |
+
+In the headline figre, neighbor joining starts at 0.42 accuracy and still falls short at ~0.87-0.91 accuracy at the largest branch length, whereas all other methods reaches ~1.0 accuracy by branch lengths ~0.03-0.45. The aggregate accuracy for NJ can be explained by its performance here under Felsenstein.
+
+It can also be observed that CNN and Hybrid CNN are very close in behavior, which shows that the hybrid, model-guided method does not meaningfully diverge from its CNN parent under correct model specification.
+
+NJ's Aggregate Confusion Matrix (all 3 regimes, n=2295):
+
+| True \ Pred | 1 | 2 | 3 |
+|---|---|---|---|
+| 1 | 688 | 66 | 8 |
+| 2 | 66 | 689 | 5 |
+| 3 | 51 | 11 | 711 |
+
+Looking at NJ's confusion matrix, we see that this method's errors are not randomly scattered. It confuses topology 1 and topology 2 with each other 66 times, while confusing each with topology 3 only 5-11 times. This surfaces a symmetric bias and the expected behavior of long-branch attraction pulling 2 specific unrelated taxa together. This observation confirms my prediction that NJ's errors would hone in on one specific wrong topology.
+
+### Outbreak-Like
+
+| Arm | Accuracy | 95% CI |
+|---|---|---|
+| LR (15-dim) | 99.74% | [0.9935, 1.0000] |
+| NJ | 99.74% | [0.9935, 1.0000] |
+| LR (256-dim) | 99.61% | [0.9908, 1.0000] |
+| IQ-TREE (ML) | 99.61% | [0.9908, 1.0000] |
+| CNN | 98.95% | [0.9817, 0.9961] |
+| Hybrid CNN | 98.82% | [0.9804, 0.9948] |
+
+No method is uniquely under performing here. All methods converge fast and uniformly by ~0.015-0.025 branch length and near 1.0 accuracy.
+
+LR-15 and NJ are only marginally ahead of other methods. Given the overlapping confidence intervals and near-perfect bunching, these differences are noise. Indication to not over-read these small differences.
 
 ## Misspecification (JC69 → GTR+Γ)
 
+| Arm | JC69 Acc | GTR Acc | Drop |
+|---|---|---|---|
+| LR (256-dim) | 99.13% | 91.72% | 7.4 pts |
+| LR (15-dim) | 98.17% | 81.61% | 16.6 pts |
+| IQ-TREE (ML) | 96.78% | 65.67% | 31.1 pts |
+| NJ | 90.98% | 65.67% | 25.3 pts |
+| Hybrid CNN | 98.87% | 65.33% | 33.5 pts |
+| CNN | 98.95% | 62.44% | 36.5 pts |
+
+The LR-15 and LR-256 accuracy gap confirms that the JC69 vector compression discards real signal when the model assumption breaks.
+
+| Method | GTR Accuracy | Worst class (accuracy) | Failure mode |
+|---|---|---|---|
+| LR-256 | 91.7% | class 1 (82.3%) | Mild, symmetric |
+| LR-15 | 81.6% | all ~80-82% | Mild, symmetric |
+| IQ-TREE | 65.7% | all classes (65.7%) | Perfectly symmetric, identical to NJ |
+| NJ | 65.7% | all classes (65.7%) | Identical matrix to IQ-TREE |
+| Hybrid CNN | 65.3% | class 2 (33.7%) | Biased toward predicting "1" |
+| CNN | 62.4% | class 3 (34.7%) | Biased toward predicting "2" |
+
+The CNN was the worse performing method under misspecification (62.4%) and it over-predicted topology 2 while the Hybrid CNN over-predicted topology 1. This suggests that adding the site-pattern vector to the CNN changes its failure configuration, not just the overall accuracy.
+
+In the results, I also saw that NJ and IQ-TREE produced identical confusion matrices under the GTR+Γ data. It was confirmed to not be a bug, but the cause remains unexplained and could be worth exploring.
+
+| Method | JC69 Brier | GTR Brier | Note |
+|---|---|---|---|
+| LR-256 | 0.0154 | 0.144 | Degrades, stays informative |
+| LR-15 | 0.0344 | 0.349 | Degrades more, still partially informative |
+| Hybrid CNN | 0.0180 | 0.568 | Near chance-level (0.667 = uniform guessing) |
+| CNN | 0.0186 | 0.650 | Essentially indistinguishable from guessing |
+
+Under the JC69 data, all four probabilistic methods are well-calibrated which was expected. But under GTR+Γ, the calibrations look different.
+
+A Brier score of 0.667 is what happens when a model outputs baseline 1/3-1/3-1/3 probabilities for each of the 3 classes regardless of input. CNN's score of 0.650 and 62.4% accuracy, means the model outputted high-confidence probabilities and is more confidently wrong under misspecification. This is not a good look for applying CNN to analyzing real-world outbreak data. The CNN confidence estimates under GTR+Γ data carry almost no meaning. LR-256 method is the best calibrated (0.144) even under that same distribution shift.
+
+Note: As an honest caveat, these misspecification results are aggregated across the 3 regimes. A per-regime breakdown would be worth exploring in the project's extension.
+
 ## Discussion
+
+### Scoring My Predictions
+* Easy: Correct. Each method's accuracy was within a few points of each other (96.17% - 98.81%). The CNN did not beat the LR-256 site-pattern classifier (98.55% vs 98.81%).
+* Felsenstein zone: Partially correct, with interesting find. NJ under performed, as predicted and its errors skewed towards one specific wrong topology. But my prediction about maximum likelihood understated things. CNN, LR-256, and Hybrid CNN all performed better, near 99% accuracy. Under a correctly specified model, gradient descent based learning found the same long-branch discount mechanism that likelihood has built in analytically, and even slightly outperformed here.
+* Outbreak: Correct in principle. None of the plotted curves visibily reach 1/3 as internal branch length goes to 0, as originally predicted. But the true floor only shows up at very small branch lengths which are hidden by the 10-bin averaging in the plots. The methods that separated near ceiling (LR-15 and NJ), had overlapping confidence intervals, so the rankings are statistically indistinguishable.
+* GTR+Γ misspecification: Correct. Every method did worse under this data. But it doesn't follow the model-guided framing. LR-256 was the most robust method, while Hybrid CNN worsened almost as badly as its parent CNN that it was built from. And Hybrid CNN did not compare to LR-15 performance under GTR despite having access to the same compressed vector information. The mechanism that the Hybrid CNN was meant to test did not show up in the hybrid's performance i.e whether give a neural network access to model-derived features makes it more robust to messier data.
+
+The quartet schema that I ran these experiments on is the atom of tree inference. Any tree with more taxa is determined by the set of quartet topologies it induces. So the result that matters when scaling up the problem, is that when the substitution model doesn't match reality which is very much the case in real-world genomics, preserving the least compressed version of the site-pattern statistic (LR-256) mattered more than adding raw-sequence flexibility or a hybrid combination (CNN, Hybrid CNN).
+
+The result to take away from: under a correctly specified model, the CNN never beat logistic regression on site-pattern frequencies. Under a misspecified model, the CNN performed the worst and degraded further and more confidently wrong than a plain linear model with no knowledge of the substitution process. Adding the same site-pattern information to the CNN barely helped too.
+
+So the objective was never about deep learning versus simpler statistical models. It's about which representation survived a misspecified model: the full, uncompressed site-pattern count vector. The raw-sequence derived features the CNN learned and attaching the site-pattern vector onto the CNN features did not enhance performance. This is a small scale result, but it is worth knowing before scaling this experiment up to real genomic data.

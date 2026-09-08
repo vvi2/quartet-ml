@@ -1,19 +1,25 @@
 # quartet-ml
 
 **Does a CNN beat logistic regression on site-pattern frequencies at inferring
-four-taxon phylogenies, and does that answer change under model
+four-taxon phylogenetic trees, and does that answer change under model
 misspecification or near-zero internal branch lengths?**
 
-Short answer: TBD — this is a work in progress. See `report/` once written.
+Short answer: No, under correct model specification the CNN does not beat logistic regression with site-pattern classifier, and it degrades more substantially under misspecification than the classifier does. A hybrid CNN with the site-pattern knowledge attached to its features does not improve performance either.
 
-[Headline figure goes here once generated]
+![Accuracy vs internal branch length across regimes and methods](report/headline_figure.png)
+
+## Report
+
+Full writeup: [report/report.pdf](report/report.pdf) — the headline
+finding, results by regime, and the misspecification analysis.
+
 
 ## What this is
 
-Four inference strategies — CNN, site-pattern logistic regression, a hybrid
-of the two, maximum likelihood (IQ-TREE), and neighbour joining — compared on
+Five inference methods: CNN, site-pattern logistic regression, a hybrid
+of the two, maximum likelihood (IQ-TREE), and neighbor joining. I compare them on
 the smallest phylogenetic problem that exists: four taxa, three possible
-unrooted topologies. Evaluated across three evolutionary regimes (easy,
+unrooted topologies. I evaluate the methods across three evolutionary regimes (easy,
 Felsenstein zone, outbreak-like) and under substitution-model
 misspecification (train JC69, test GTR+Γ).
 
@@ -82,7 +88,10 @@ your shell profile) each time you open a new one.
 quartet-ml --help
 ```
 
-(Subcommands land as each stage is implemented.)
+Training, evaluation, and plotting are run directly via the standalone
+scripts at the repo root (`evaluate_cnn.py`, `evaluate_lr.py`,
+`evaluate_nj.py`, `evaluate_iqtree.py`, `evaluate_hybrid_cnn.py`,
+`report/plot_headline_figure.py`) rather than as CLI subcommands.
 
 ## Tests
 
