@@ -1,12 +1,13 @@
 """Smoke test: confirms the package installs and imports cleanly."""
 
 import numpy as np
+import torch
 
 import quartet_ml
 from quartet_ml.baselines import nj_prediction, iq_tree
 from quartet_ml.features import build_site_pattern_vector, cnn_matrix, jc69_collapsed_vector, read_phylip_data
 from quartet_ml.simulate import build_newick, create_trees, easy, felsenstein_zone, outbreak_like, possible_topologies
-from quartet_ml.train import get_x_y_train, site_pattern_classifier_LR
+from quartet_ml.train import CNN, HybridCNN, get_x_y_split, train_site_pattern_classifier_LR
 from quartet_ml.evaluate import accuracy, confusion_matrix_3x3, bootstrap_ci, calibration
 
 
@@ -124,7 +125,7 @@ def test_neighbor_joining():
     assert topology_3 == "3", f"Expected NJ to predict 3 on this file, but instead got {topology_3}"
 
 def test_site_pattern_classifier_LR():
-    models = site_pattern_classifier_LR("tests/fixtures/site_pattern_train_fixture.csv")
+    models = train_site_pattern_classifier_LR("tests/fixtures/site_pattern_train_fixture.csv")
     x_train_256 = models["x_train_256"]
     x_train_15 = models["x_train_15"]
     y_train = models["y_train"]
@@ -141,6 +142,28 @@ def test_site_pattern_classifier_LR():
     assert probs_15.shape == (3, 3), f"Shape of 15 model probabilities should be (3, 3), but is {probs_15.shape}"
     assert np.allclose(probs_256.sum(axis=1), 1), f"Probabilities of 256 model do not sum to 1"
     assert np.allclose(probs_15.sum(axis=1), 1), f"Probabilities of 15 model do not sum to 1"
+
+def test_cnn_output_shape():
+    model = CNN(in_channels=16, out_channels=8, kernel_size=3)
+    fake_input = torch.randn(2, 16, 1000)
+    logits = model(fake_input)
+    probs = torch.softmax(logits, dim=1)
+    assert probs.shape == (2, 3), f"Expected CNN output shape (2, 3), but got {tuple(probs.shape)}"
+    assert torch.allclose(probs.sum(dim=1), torch.ones(2)), f"Expected CNN output probabilities to sum to 1 per row, but got {probs.sum(dim=1)}"
+
+def test_hybrid_cnn_concatenation():
+    model = HybridCNN(in_channels=16, out_channels=8, kernel_size=3)
+    expected_in_features = model.conv2.out_channels + 15
+    assert model.fc.in_features == expected_in_features, f"Expected hybrid fc input size to equal pooled-CNN-size + 15 ({expected_in_features}), but got {model.fc.in_features}"
+
+def test_hybrid_cnn_output_shape():
+    model = HybridCNN(in_channels=16, out_channels=8, kernel_size=3)
+    fake_cnn_input = torch.randn(2, 16, 1000)
+    fake_pattern_input = torch.randn(2, 15)
+    logits = model(fake_cnn_input, fake_pattern_input)
+    probs = torch.softmax(logits, dim=1)
+    assert probs.shape == (2, 3), f"Expected hybrid CNN output shape (2, 3), but got {tuple(probs.shape)}"
+    assert torch.allclose(probs.sum(dim=1), torch.ones(2)), f"Expected hybrid CNN output probabilities to sum to 1 per row, but got {probs.sum(dim=1)}"
 
 def test_accuracy():
     y_true = ["1", "2", "3", "1", "2", "3"]
