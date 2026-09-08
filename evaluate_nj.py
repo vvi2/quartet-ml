@@ -14,20 +14,30 @@ def evaluate_nj():
   test_df = df[df["split"] == "test"]
   y_true = []
   y_pred = []
+  regimes = []
+  internal_branch_lengths = []
   failure_counter = 0
   start = time.time()
   for i, (_, row) in enumerate(test_df.iterrows()):
     true_label = str(row["topology"])
     pred_label = nj_prediction(row["filepath"])
+    regime = row["regime"]
+    branch_length = row["internal_branch_length"]
     if pred_label is None:
       failure_counter +=1
       continue
     else:
       y_true.append(true_label)
       y_pred.append(pred_label)
+      regimes.append(regime)
+      internal_branch_lengths.append(branch_length)
     if i % 100 == 0:
       print(i)
   print(f"JC69 Data: {time.time() - start:.1f}s for {len(y_true)} alignments")
+  correct = [int(x==y) for x,y in zip(y_true, y_pred)]
+  headline_file_path = Path("headline_data/")
+  headline_file_path.mkdir(parents = True, exist_ok = True)
+  pd.DataFrame({"method": "NJ", "regime": regimes, "internal_branch_length": internal_branch_lengths, "correct": correct}).to_csv(headline_file_path / "nj.csv", index=False)
   gtr_y_true = []
   gtr_y_pred = []
   gtr_failure_counter = 0

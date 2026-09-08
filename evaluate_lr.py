@@ -1,3 +1,7 @@
+from pathlib import Path
+
+import pandas as pd
+
 from quartet_ml.evaluate import accuracy, bootstrap_ci, calibration, confusion_matrix_3x3
 from quartet_ml.train import get_x_y_split, get_x_y_split_gtr, train_site_pattern_classifier_LR
 
@@ -10,6 +14,17 @@ def evaluate_lr():
   y_proba_256 = models["256"].predict_proba(test_x_256)
   y_pred_15 = models["15"].predict(test_x_15)
   y_proba_15 = models["15"].predict_proba(test_x_15)
+  data_file_path = Path(__file__).resolve().parent / "jc69_split_data.csv"
+  df = pd.read_csv(data_file_path)
+  df = df[df["split"] == "test"]
+  regimes = df["regime"].tolist()
+  internal_branch_lengths = df["internal_branch_length"].tolist()
+  correct_256 = [int(x==y) for x,y in zip(test_y, y_pred_256)]
+  correct_15 = [int(x==y) for x,y in zip(test_y, y_pred_15)]
+  headline_file_path = Path("headline_data/")
+  headline_file_path.mkdir(parents = True, exist_ok = True)
+  pd.DataFrame({"method": "LR-256", "regime": regimes, "internal_branch_length": internal_branch_lengths, "correct": correct_256}).to_csv(headline_file_path / "lr_256.csv", index=False)
+  pd.DataFrame({"method": "LR-15", "regime": regimes, "internal_branch_length": internal_branch_lengths, "correct": correct_15}).to_csv(headline_file_path / "lr_15.csv", index=False)
   y_pred_256_gtr = models["256"].predict(test_x_256_gtr)
   y_proba_256_gtr = models["256"].predict_proba(test_x_256_gtr)
   y_pred_15_gtr = models["15"].predict(test_x_15_gtr)

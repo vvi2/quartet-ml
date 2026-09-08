@@ -1,3 +1,6 @@
+from pathlib import Path
+
+import pandas as pd
 import torch
 
 from quartet_ml.evaluate import accuracy, bootstrap_ci, calibration, confusion_matrix_3x3
@@ -37,6 +40,15 @@ def evaluate_cnn():
       y_preds_gtr.extend(preds_gtr.tolist())
   y_preds = [str(value + 1) for value in y_preds]
   y_true = [str(value + 1) for value in test_y]
+  data_file_path = Path(__file__).resolve().parent / "jc69_split_data.csv"
+  df = pd.read_csv(data_file_path)
+  df = df[df["split"] == "test"]
+  regimes = df["regime"].tolist()
+  internal_branch_lengths = df["internal_branch_length"].tolist()
+  correct = [int(x==y) for x,y in zip(y_true, y_preds)]
+  headline_file_path = Path("headline_data/")
+  headline_file_path.mkdir(parents = True, exist_ok = True)
+  pd.DataFrame({"method": "CNN", "regime": regimes, "internal_branch_length": internal_branch_lengths, "correct": correct}).to_csv(headline_file_path / "cnn.csv", index=False)
   y_preds_gtr = [str(value + 1) for value in y_preds_gtr]
   y_true_gtr = [str(value + 1) for value in test_y_gtr]
   acc_score = {"Accuracy": accuracy(y_true, y_preds), "Chance-Level Accuracy": 1/3}
