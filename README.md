@@ -1,4 +1,4 @@
-# Comparing Performance of Different ML Methods on Predicting Quartet Trees
+# Comparing Performance of Different Machine Learning Models on Predicting Quartet Trees
 
 **Does a CNN beat logistic regression on site-pattern frequencies at inferring
 four-taxon phylogenetic trees, and does that answer change under model
