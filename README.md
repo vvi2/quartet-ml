@@ -4,7 +4,7 @@
 four-taxon phylogenetic trees, and does that answer change under model
 misspecification or near-zero internal branch lengths?**
 
-Short answer: No, under correct model specification the CNN does not beat logistic regression with site-pattern classifier, and it degrades more substantially under misspecification than the classifier does. A hybrid CNN with the site-pattern knowledge attached to its features does not improve performance either.
+Short answer: No, under correct DNA substitution model specification the CNN does not beat logistic regression with site-pattern classifier, and it degrades more substantially under DNA substitution model misspecification than the classifier does. A hybrid CNN with the site-pattern knowledge attached to its features does not improve performance either.
 
 ![Accuracy vs internal branch length across regimes and methods](report/headline_figure.png)
 
@@ -16,12 +16,10 @@ finding, results by regime, and the misspecification analysis.
 
 ## What this is
 
-Five inference methods: CNN, site-pattern logistic regression, a hybrid
-of the two, maximum likelihood (IQ-TREE), and neighbor joining. I compare them on
-the smallest phylogenetic problem that exists: four taxa, three possible
+Five tree inference methods: CNN, site-pattern logistic regression, a hybrid
+of the two, maximum likelihood (IQ-TREE), and neighbor joining. I compare them a small phylogenetic problem: four taxa, three possible
 unrooted topologies. I evaluate the methods across three evolutionary regimes (easy,
-Felsenstein zone, outbreak-like) and under substitution-model
-misspecification (train JC69, test GTR+Γ).
+Felsenstein zone, outbreak-like) and under two different DNA substitution-models (train on JC69, test GTR+Γ).
 
 ## Package layout
 
